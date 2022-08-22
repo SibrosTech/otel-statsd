@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rr-opentelemetry-sdk-extension-statsd"
+version = "0.8.0"
+authors = [
+    { name="Rangel Reale", email="rangelreale@gmail.com" },
+]
+description = "StatsD client support for OpenTelemetry"
+readme = "README.rst"
+license = { file="LICENSE" }
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/RangelReale/otel-statsd"
+"Bug Tracker" = "https://github.com/RangelReale/otel-statsd/issues"
