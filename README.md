@@ -4,6 +4,7 @@ This repository contains [Python](python/opentelemetry-sdk-extension-statsd) and
 that sends metrics to a StatsD client. Usually metrics are sent synchronously using UDP,
 which makes it a good option for AWS Lambda metrics.
 
-## Author
+## License
 
-Rangel Reale (rangelreale@gmail.com)
+This project is licensed under the [MIT LICENSE](LICENSE).
+
