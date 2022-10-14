@@ -9,7 +9,7 @@ Installation
 
 ::
 
-    pip install rr-opentelemetry-sdk-extension-statsd
+    pip install sb-opentelemetry-sdk-extension-statsd
 
 Usage
 -----

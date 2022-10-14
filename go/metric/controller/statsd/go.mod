@@ -1,4 +1,4 @@
-module github.com/RangelReale/otel-statsd/go/metric/controller/statsd
+module github.com/SibrosTech/otel-statsd/go/metric/controller/statsd
 
 go 1.17
 

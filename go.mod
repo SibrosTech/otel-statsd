@@ -1,3 +1,3 @@
-module github.com/RangelReale/otel-statsd
+module github.com/SibrosTech/otel-statsd
 
 go 1.17
