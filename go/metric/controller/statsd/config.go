@@ -13,7 +13,13 @@ type config struct {
 	Resource *resource.Resource
 
 	// Statsd client to use
-	StatsdClient statsd.Statter
+	StatsdClient statsd.StatSender
+
+	// Number of Workers. If <= 0, send synchronously
+	Workers int
+
+	// Size of the worker chan buffer. Default is workers * 10
+	WorkerChanBufferSize int
 }
 
 // Option is the interface that applies the value to a configuration option.
@@ -40,13 +46,37 @@ func (o resourceOption) apply(cfg config) config {
 }
 
 // WithStatsdClient sets the StatsD client. If not set, a default one will be created.
-func WithStatsdClient(s statsd.Statter) Option {
+func WithStatsdClient(s statsd.StatSender) Option {
 	return statsdclientOption{s}
 }
 
-type statsdclientOption struct{ statsd.Statter }
+type statsdclientOption struct{ statsd.StatSender }
 
 func (o statsdclientOption) apply(cfg config) config {
-	cfg.StatsdClient = o.Statter
+	cfg.StatsdClient = o.StatSender
+	return cfg
+}
+
+// WithWorkers sets the number of Workers. If <= 0, send synchronously
+func WithWorkers(workers int) Option {
+	return workersOption{workers}
+}
+
+type workersOption struct{ workers int }
+
+func (o workersOption) apply(cfg config) config {
+	cfg.Workers = o.workers
+	return cfg
+}
+
+// WithWorkerChanBufferSize sets the size of the worker chan buffer. Default is workers * 10
+func WithWorkerChanBufferSize(workers int) Option {
+	return workersOption{workers}
+}
+
+type workerChanBufferSizeOption struct{ size int }
+
+func (o workerChanBufferSizeOption) apply(cfg config) config {
+	cfg.WorkerChanBufferSize = o.size
 	return cfg
 }

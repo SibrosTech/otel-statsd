@@ -16,7 +16,7 @@ import (
 type Controller struct {
 	scopes sync.Map
 
-	statsdClient statsd.Statter
+	statsdClient statsd.StatSender
 	resource     *resource.Resource
 }
 
@@ -27,9 +27,10 @@ func New(opts ...Option) *Controller {
 	for _, opt := range opts {
 		c = opt.apply(c)
 	}
-	if c.StatsdClient == nil {
+	statsdClient := c.StatsdClient
+	if statsdClient == nil {
 		var err error
-		c.StatsdClient, err = statsd.NewClientWithConfig(&statsd.ClientConfig{
+		statsdClient, err = statsd.NewClientWithConfig(&statsd.ClientConfig{
 			Address:     "127.0.0.1:8125",
 			UseBuffered: false,
 		})
@@ -37,6 +38,7 @@ func New(opts ...Option) *Controller {
 			otel.Handle(err)
 		}
 	}
+
 	if c.Resource == nil {
 		c.Resource = resource.Default()
 	} else {
@@ -47,10 +49,17 @@ func New(opts ...Option) *Controller {
 		}
 	}
 
-	return &Controller{
-		statsdClient: c.StatsdClient,
-		resource:     c.Resource,
+	ret := &Controller{
+		resource: c.Resource,
 	}
+
+	if c.Workers > 0 {
+		workers := newWorkerStatSender(c.Workers, c.WorkerChanBufferSize, statsdClient)
+		statsdClient = workers
+	}
+
+	ret.statsdClient = statsdClient
+	return ret
 }
 
 func (c *Controller) Meter(instrumentationName string, opts ...metric.MeterOption) metric.Meter {
@@ -73,9 +82,18 @@ func (c *Controller) Meter(instrumentationName string, opts ...metric.MeterOptio
 }
 
 func (c *Controller) Start(_ context.Context) error {
+	if w, ok := c.statsdClient.(*workerStatSender); ok {
+		err := w.Start()
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (c *Controller) Stop(_ context.Context) error {
+	if w, ok := c.statsdClient.(*workerStatSender); ok {
+		return w.Stop()
+	}
 	return nil
 }
