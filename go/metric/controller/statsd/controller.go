@@ -8,8 +8,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
-	"go.opentelemetry.io/otel/sdk/metric/registry"
-	"go.opentelemetry.io/otel/sdk/metric/sdkapi"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -70,15 +68,7 @@ func (c *Controller) Meter(instrumentationName string, opts ...metric.MeterOptio
 		SchemaURL: cfg.SchemaURL(),
 	}
 
-	m, ok := c.scopes.Load(scope)
-	if !ok {
-		m, _ = c.scopes.LoadOrStore(
-			scope,
-			registry.NewUniqueInstrumentMeterImpl(&meterImpl{
-				controller: c,
-			}))
-	}
-	return sdkapi.WrapMeterImpl(m.(*registry.UniqueInstrumentMeterImpl))
+	return &meterImpl{c, scope}
 }
 
 func (c *Controller) Start(_ context.Context) error {
