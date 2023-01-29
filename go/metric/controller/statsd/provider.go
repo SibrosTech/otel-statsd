@@ -11,16 +11,16 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
-type Controller struct {
+type MeterProvider struct {
 	scopes sync.Map
 
 	statsdClient statsd.StatSender
 	resource     *resource.Resource
 }
 
-var _ metric.MeterProvider = &Controller{}
+var _ metric.MeterProvider = &MeterProvider{}
 
-func New(opts ...Option) *Controller {
+func New(opts ...Option) *MeterProvider {
 	c := config{}
 	for _, opt := range opts {
 		c = opt.apply(c)
@@ -47,7 +47,7 @@ func New(opts ...Option) *Controller {
 		}
 	}
 
-	ret := &Controller{
+	ret := &MeterProvider{
 		resource: c.Resource,
 	}
 
@@ -60,7 +60,7 @@ func New(opts ...Option) *Controller {
 	return ret
 }
 
-func (c *Controller) Meter(instrumentationName string, opts ...metric.MeterOption) metric.Meter {
+func (c *MeterProvider) Meter(instrumentationName string, opts ...metric.MeterOption) metric.Meter {
 	cfg := metric.NewMeterConfig(opts...)
 	scope := instrumentation.Scope{
 		Name:      instrumentationName,
@@ -71,7 +71,7 @@ func (c *Controller) Meter(instrumentationName string, opts ...metric.MeterOptio
 	return &meterImpl{c, scope}
 }
 
-func (c *Controller) Start(_ context.Context) error {
+func (c *MeterProvider) Start(_ context.Context) error {
 	if w, ok := c.statsdClient.(*workerStatSender); ok {
 		err := w.Start()
 		if err != nil {
@@ -81,7 +81,7 @@ func (c *Controller) Start(_ context.Context) error {
 	return nil
 }
 
-func (c *Controller) Stop(_ context.Context) error {
+func (c *MeterProvider) Stop(_ context.Context) error {
 	if w, ok := c.statsdClient.(*workerStatSender); ok {
 		return w.Stop()
 	}

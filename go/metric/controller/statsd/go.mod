@@ -1,6 +1,6 @@
 module github.com/SibrosTech/otel-statsd/go/metric/controller/statsd
 
-go 1.17
+go 1.18
 
 require (
 	github.com/cactus/go-statsd-client/v5 v5.0.0

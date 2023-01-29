@@ -6,10 +6,10 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
-// config contains configuration for the Controller.
+// config contains configuration for the MeterProvider.
 type config struct {
 	// Resource is the OpenTelemetry resource associated with all Meters
-	// created by the Controller.
+	// created by the MeterProvider.
 	Resource *resource.Resource
 
 	// Statsd client to use

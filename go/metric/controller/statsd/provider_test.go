@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-func TestController(t *testing.T) {
+func TestProvider(t *testing.T) {
 	tests := []mocks.MockStatSenderMethod{
 		{
 			Method: "Inc",
@@ -54,7 +54,7 @@ func TestController(t *testing.T) {
 	rs.CHECK(t)
 }
 
-func TestControllerWithWorkers(t *testing.T) {
+func TestProviderWithWorkers(t *testing.T) {
 	tests := []mocks.MockStatSenderMethod{
 		{
 			Method: "Inc",
