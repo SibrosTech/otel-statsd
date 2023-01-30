@@ -109,23 +109,6 @@ func (m *MockStatSender) CHECK(t *testing.T) {
 		}
 	}
 
-	// select {
-	// case out := <-m.Output:
-	// 	found := false
-	// 	for _, mc := range m.expects {
-	// 		if !mc.checked && mc.Equals(&out) {
-	// 			mc.checked = true
-	// 			found = true
-	// 			break
-	// 		}
-	// 	}
-	// 	if !found {
-	// 		t.Fatalf("method not found: %+v", out)
-	// 	}
-	// case <-time.After(100 * time.Millisecond):
-	// 	t.Fatalf("test timed out")
-	// }
-
 	for _, e := range m.expects {
 		if !e.checked {
 			t.Errorf("method not called: %+v", e)
