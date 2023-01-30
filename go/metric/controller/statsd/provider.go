@@ -20,7 +20,7 @@ type MeterProvider struct {
 
 var _ metric.MeterProvider = &MeterProvider{}
 
-func New(opts ...Option) *MeterProvider {
+func NewMeterProvider(opts ...Option) *MeterProvider {
 	c := config{}
 	for _, opt := range opts {
 		c = opt.apply(c)

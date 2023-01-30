@@ -1,6 +1,7 @@
 package statsd
 
 import (
+	"errors"
 	"time"
 
 	"github.com/cactus/go-statsd-client/v5/statsd"
@@ -42,8 +43,9 @@ func (w *worker) pullMetric() {
 
 // workerStatSender
 type workerStatSender struct {
-	workers []*worker
-	input   chan workerJob
+	statsdClient statsd.StatSender
+	workers      []*worker
+	input        chan workerJob
 }
 
 func newWorkerStatSender(workers int, bufferSize int, statsdClient statsd.StatSender) *workerStatSender {
@@ -51,7 +53,8 @@ func newWorkerStatSender(workers int, bufferSize int, statsdClient statsd.StatSe
 		bufferSize = workers * 10
 	}
 	ret := &workerStatSender{
-		input: make(chan workerJob, bufferSize),
+		statsdClient: statsdClient,
+		input:        make(chan workerJob, bufferSize),
 	}
 	for i := 0; i < workers; i++ {
 		w := newWorker(ret.input, statsdClient)
@@ -61,6 +64,9 @@ func newWorkerStatSender(workers int, bufferSize int, statsdClient statsd.StatSe
 }
 
 func (w *workerStatSender) Start() error {
+	if len(w.workers) == 0 {
+		return errors.New("no workers")
+	}
 	for _, w := range w.workers {
 		w.startReceivingMetric()
 	}
@@ -71,7 +77,25 @@ func (w *workerStatSender) Stop() error {
 	for _, w := range w.workers {
 		w.stopReceivingMetric()
 	}
+	w.workers = nil
+	w.flush()
 	return nil
+}
+
+func (w *workerStatSender) flush() {
+	for {
+		select {
+		case m, ok := <-w.input:
+			if ok {
+				_ = m(w.statsdClient)
+			} else {
+				// channel closed
+				break
+			}
+		default:
+			return
+		}
+	}
 }
 
 func (w *workerStatSender) Inc(s string, i int64, f float32, tag ...statsd.Tag) error {

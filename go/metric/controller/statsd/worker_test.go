@@ -26,18 +26,20 @@ func TestWorkerStatSender(t *testing.T) {
 		},
 	}
 
-	rs := mocks.NewMockStatSender(len(tests))
+	rs := mocks.NewMockStatSender()
 	rs.EXPECT(tests...)
 
 	sender := newWorkerStatSender(2, 10, rs)
 	err := sender.Start()
 	require.NoError(t, err)
-	defer sender.Stop()
 
 	for _, test := range tests {
 		err := test.Call(sender)
 		require.NoError(t, err)
 	}
+
+	err = sender.Stop()
+	require.NoError(t, err)
 
 	rs.CHECK(t)
 }

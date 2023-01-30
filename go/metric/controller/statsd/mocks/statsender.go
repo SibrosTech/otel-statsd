@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -74,15 +75,14 @@ func (mm *MockStatSenderMethod) EqualTags(other *MockStatSenderMethod) bool {
 
 // MockStatSender is a mock of StatSender interface.
 type MockStatSender struct {
-	Output  chan MockStatSenderMethod
+	mu      sync.Mutex
+	Output  []*MockStatSenderMethod
 	expects []*MockStatSenderMethod
 }
 
 // NewMockStatSender creates a new mock instance.
-func NewMockStatSender(amount int) *MockStatSender {
-	mock := &MockStatSender{
-		Output: make(chan MockStatSenderMethod, amount),
-	}
+func NewMockStatSender() *MockStatSender {
+	mock := &MockStatSender{}
 	return mock
 }
 
@@ -95,24 +95,36 @@ func (m *MockStatSender) EXPECT(method ...MockStatSenderMethod) {
 }
 
 func (m *MockStatSender) CHECK(t *testing.T) {
-	for i := 0; i < len(m.expects); i++ {
-		select {
-		case out := <-m.Output:
-			found := false
-			for _, mc := range m.expects {
-				if !mc.checked && mc.Equals(&out) {
-					mc.checked = true
-					found = true
-					break
-				}
+	for _, out := range m.Output {
+		found := false
+		for _, mc := range m.expects {
+			if !mc.checked && mc.Equals(out) {
+				mc.checked = true
+				found = true
+				break
 			}
-			if !found {
-				t.Fatalf("method not found: %+v", out)
-			}
-		case <-time.After(100 * time.Millisecond):
-			t.Fatalf("test timed out")
+		}
+		if !found {
+			t.Fatalf("method not found: %+v", out)
 		}
 	}
+
+	// select {
+	// case out := <-m.Output:
+	// 	found := false
+	// 	for _, mc := range m.expects {
+	// 		if !mc.checked && mc.Equals(&out) {
+	// 			mc.checked = true
+	// 			found = true
+	// 			break
+	// 		}
+	// 	}
+	// 	if !found {
+	// 		t.Fatalf("method not found: %+v", out)
+	// 	}
+	// case <-time.After(100 * time.Millisecond):
+	// 	t.Fatalf("test timed out")
+	// }
 
 	for _, e := range m.expects {
 		if !e.checked {
@@ -121,101 +133,107 @@ func (m *MockStatSender) CHECK(t *testing.T) {
 	}
 }
 
+func (m *MockStatSender) addOutput(method *MockStatSenderMethod) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Output = append(m.Output, method)
+}
+
 func (m *MockStatSender) Inc(s string, i int64, f float32, tag ...statsd.Tag) error {
-	m.Output <- MockStatSenderMethod{
+	m.addOutput(&MockStatSenderMethod{
 		Method: "Inc",
 		S:      s,
 		I:      i,
 		F:      f,
 		Tags:   tag,
-	}
+	})
 	return nil
 }
 
 func (m *MockStatSender) Dec(s string, i int64, f float32, tag ...statsd.Tag) error {
-	m.Output <- MockStatSenderMethod{
+	m.addOutput(&MockStatSenderMethod{
 		Method: "Dec",
 		S:      s,
 		I:      i,
 		F:      f,
 		Tags:   tag,
-	}
+	})
 	return nil
 }
 
 func (m *MockStatSender) Gauge(s string, i int64, f float32, tag ...statsd.Tag) error {
-	m.Output <- MockStatSenderMethod{
+	m.addOutput(&MockStatSenderMethod{
 		Method: "Gauge",
 		S:      s,
 		I:      i,
 		F:      f,
 		Tags:   tag,
-	}
+	})
 	return nil
 }
 
 func (m *MockStatSender) GaugeDelta(s string, i int64, f float32, tag ...statsd.Tag) error {
-	m.Output <- MockStatSenderMethod{
+	m.addOutput(&MockStatSenderMethod{
 		Method: "GaugeDelta",
 		S:      s,
 		I:      i,
 		F:      f,
 		Tags:   tag,
-	}
+	})
 	return nil
 }
 
 func (m *MockStatSender) Timing(s string, i int64, f float32, tag ...statsd.Tag) error {
-	m.Output <- MockStatSenderMethod{
+	m.addOutput(&MockStatSenderMethod{
 		Method: "Timing",
 		S:      s,
 		I:      i,
 		F:      f,
 		Tags:   tag,
-	}
+	})
 	return nil
 }
 
 func (m *MockStatSender) TimingDuration(s string, duration time.Duration, f float32, tag ...statsd.Tag) error {
-	m.Output <- MockStatSenderMethod{
+	m.addOutput(&MockStatSenderMethod{
 		Method:   "TimingDuration",
 		S:        s,
 		Duration: duration,
 		F:        f,
 		Tags:     tag,
-	}
+	})
 	return nil
 }
 
 func (m *MockStatSender) Set(s string, s2 string, f float32, tag ...statsd.Tag) error {
-	m.Output <- MockStatSenderMethod{
+	m.addOutput(&MockStatSenderMethod{
 		Method: "Set",
 		S:      s,
 		S2:     s2,
 		F:      f,
 		Tags:   tag,
-	}
+	})
 	return nil
 }
 
 func (m *MockStatSender) SetInt(s string, i int64, f float32, tag ...statsd.Tag) error {
-	m.Output <- MockStatSenderMethod{
+	m.addOutput(&MockStatSenderMethod{
 		Method: "SetInt",
 		S:      s,
 		I:      i,
 		F:      f,
 		Tags:   tag,
-	}
+	})
 	return nil
 }
 
 func (m *MockStatSender) Raw(s string, s2 string, f float32, tag ...statsd.Tag) error {
-	m.Output <- MockStatSenderMethod{
+	m.addOutput(&MockStatSenderMethod{
 		Method: "Set",
 		S:      s,
 		S2:     s2,
 		F:      f,
 		Tags:   tag,
-	}
+	})
 	return nil
 }

@@ -30,10 +30,10 @@ func TestProvider(t *testing.T) {
 
 	ctx := context.Background()
 
-	rs := mocks.NewMockStatSender(len(tests))
+	rs := mocks.NewMockStatSender()
 	rs.EXPECT(tests...)
 
-	cont := New(WithStatsdClient(rs))
+	cont := NewMeterProvider(WithStatsdClient(rs))
 	err := cont.Start(ctx)
 	require.NoError(t, err)
 	defer cont.Stop(ctx)
@@ -74,13 +74,12 @@ func TestProviderWithWorkers(t *testing.T) {
 
 	ctx := context.Background()
 
-	rs := mocks.NewMockStatSender(len(tests))
+	rs := mocks.NewMockStatSender()
 	rs.EXPECT(tests...)
 
-	cont := New(WithStatsdClient(rs), WithWorkers(2))
+	cont := NewMeterProvider(WithStatsdClient(rs), WithWorkers(2))
 	err := cont.Start(ctx)
 	require.NoError(t, err)
-	defer cont.Stop(ctx)
 
 	meter := cont.Meter("")
 
@@ -94,6 +93,9 @@ func TestProviderWithWorkers(t *testing.T) {
 		}
 		counter.Add(ctx, test.I, attr...)
 	}
+
+	err = cont.Stop(ctx)
+	require.NoError(t, err)
 
 	rs.CHECK(t)
 }
