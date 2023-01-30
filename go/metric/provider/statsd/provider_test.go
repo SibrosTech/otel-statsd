@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/SibrosTech/otel-statsd/go/metric/controller/statsd/mocks"
+	"github.com/SibrosTech/otel-statsd/go/metric/provider/statsd/mocks"
 	"github.com/cactus/go-statsd-client/v5/statsd"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"

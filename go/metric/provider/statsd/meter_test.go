@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/SibrosTech/otel-statsd/go/metric/controller/statsd/mocks"
+	"github.com/SibrosTech/otel-statsd/go/metric/provider/statsd/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

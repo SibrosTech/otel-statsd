@@ -1,4 +1,4 @@
-module github.com/SibrosTech/otel-statsd/go/metric/controller/statsd
+module github.com/SibrosTech/otel-statsd/go/metric/provider/statsd
 
 go 1.19
 

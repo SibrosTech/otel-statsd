@@ -3,7 +3,7 @@
 ## Usage
 
 ```shell
-go get github.com/SibrosTech/otel-statsd/go/metric/controller/statsd@latest
+go get github.com/SibrosTech/otel-statsd/go/metric/provider/statsd@latest
 ```
 
 ```go
@@ -11,7 +11,7 @@ import (
     "go.opentelemetry.io/otel/metric/global"
     "go.opentelemetry.io/otel/sdk/resource"
     "github.com/cactus/go-statsd-client/v5/statsd"
-    otel_statsd "github.com/SibrosTech/otel-statsd/go/metric/controller/statsd"
+    otel_statsd "github.com/SibrosTech/otel-statsd/go/metric/provider/statsd"
 )
 
 func main() {
