@@ -68,7 +68,7 @@ func (c *MeterProvider) Meter(instrumentationName string, opts ...metric.MeterOp
 		SchemaURL: cfg.SchemaURL(),
 	}
 
-	return &meterImpl{c, scope}
+	return newMeter(c, scope)
 }
 
 func (c *MeterProvider) Start(_ context.Context) error {

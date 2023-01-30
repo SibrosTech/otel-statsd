@@ -18,14 +18,26 @@ var _ metric.Meter = &meterImpl{}
 type meterImpl struct {
 	provider *MeterProvider
 	scope    instrumentation.Scope
+
+	instProviderInt64   *instProvider[int64]
+	instProviderFloat64 *instProvider[float64]
+}
+
+func newMeter(provider *MeterProvider, scope instrumentation.Scope) *meterImpl {
+	return &meterImpl{
+		provider:            provider,
+		scope:               scope,
+		instProviderInt64:   newInstProvider[int64](provider, scope),
+		instProviderFloat64: newInstProvider[float64](provider, scope),
+	}
 }
 
 func (m *meterImpl) AsyncInt64() asyncint64.InstrumentProvider {
-	return &asyncInt64Provider{}
+	return &asyncInt64Provider{m.instProviderInt64}
 }
 
 func (m *meterImpl) AsyncFloat64() asyncfloat64.InstrumentProvider {
-	return &asyncFloat64Provider{}
+	return &asyncFloat64Provider{m.instProviderFloat64}
 }
 
 func (m *meterImpl) RegisterCallback(insts []instrument.Asynchronous, function func(context.Context)) error {
@@ -33,9 +45,9 @@ func (m *meterImpl) RegisterCallback(insts []instrument.Asynchronous, function f
 }
 
 func (m *meterImpl) SyncInt64() syncint64.InstrumentProvider {
-	return &syncInt64Provider{m.provider, m.scope}
+	return syncInt64Provider{m.instProviderInt64}
 }
 
 func (m *meterImpl) SyncFloat64() syncfloat64.InstrumentProvider {
-	return &syncFloat64Provider{m.provider, m.scope}
+	return &syncFloat64Provider{m.instProviderFloat64}
 }
