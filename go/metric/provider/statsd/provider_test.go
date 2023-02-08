@@ -40,7 +40,7 @@ func TestProvider(t *testing.T) {
 
 	meter := cont.Meter("")
 
-	counter, err := meter.SyncInt64().Counter("a.b.c")
+	counter, err := meter.Int64Counter("a.b.c")
 	require.NoError(t, err)
 
 	for _, test := range tests {
@@ -83,7 +83,7 @@ func TestProviderWithWorkers(t *testing.T) {
 
 	meter := cont.Meter("")
 
-	counter, err := meter.SyncInt64().Counter("a.b.c")
+	counter, err := meter.Int64Counter("a.b.c")
 	require.NoError(t, err)
 
 	for _, test := range tests {
