@@ -13,6 +13,7 @@ import (
 
 type MeterProvider struct {
 	scopes sync.Map
+	pipes  *pipeline
 
 	statsdClient statsd.StatSender
 	resource     *resource.Resource
@@ -48,6 +49,7 @@ func NewMeterProvider(opts ...Option) *MeterProvider {
 	}
 
 	ret := &MeterProvider{
+		pipes:    newPipeline(c.Resource),
 		resource: c.Resource,
 	}
 
@@ -68,7 +70,7 @@ func (c *MeterProvider) Meter(instrumentationName string, opts ...metric.MeterOp
 		SchemaURL: cfg.SchemaURL(),
 	}
 
-	return newMeter(c, scope)
+	return newMeter(c, scope, c.pipes)
 }
 
 func (c *MeterProvider) Start(_ context.Context) error {

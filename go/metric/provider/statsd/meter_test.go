@@ -102,46 +102,183 @@ func TestMeterCreatesInstruments(t *testing.T) {
 		{
 			name: "ObservableInt64Count",
 			fn: func(t *testing.T, m metric.Meter) {
-				_, err := m.Int64ObservableCounter("aint")
-				assert.Error(t, err)
+				cback := func(_ context.Context, o instrument.Int64Observer) error {
+					o.Observe(4)
+					return nil
+				}
+				ctr, err := m.Int64ObservableCounter("aint", instrument.WithInt64Callback(cback))
+				assert.NoError(t, err)
+				_, err = m.RegisterCallback(func(_ context.Context, o metric.Observer) error {
+					o.ObserveInt64(ctr, 3)
+					return nil
+				}, ctr)
+				assert.NoError(t, err)
+			},
+			want: []mocks.MockStatSenderMethod{
+				{
+					Method: "Inc",
+					S:      "aint",
+					I:      3,
+					F:      1.0,
+				},
+				{
+					Method: "Inc",
+					S:      "aint",
+					I:      4,
+					F:      1.0,
+				},
 			},
 		},
 		{
 			name: "ObservableInt64UpDownCount",
 			fn: func(t *testing.T, m metric.Meter) {
-				_, err := m.Int64ObservableUpDownCounter("aint")
-				assert.Error(t, err)
+				cback := func(_ context.Context, o instrument.Int64Observer) error {
+					o.Observe(4)
+					return nil
+				}
+				ctr, err := m.Int64ObservableUpDownCounter("aint", instrument.WithInt64Callback(cback))
+				assert.NoError(t, err)
+				_, err = m.RegisterCallback(func(_ context.Context, o metric.Observer) error {
+					o.ObserveInt64(ctr, 11)
+					return nil
+				}, ctr)
+				assert.NoError(t, err)
+			},
+			want: []mocks.MockStatSenderMethod{
+				{
+					Method: "Inc",
+					S:      "aint",
+					I:      11,
+					F:      1.0,
+				},
+				{
+					Method: "Inc",
+					S:      "aint",
+					I:      4,
+					F:      1.0,
+				},
 			},
 		},
 		{
 			name: "ObservableInt64Gauge",
 			fn: func(t *testing.T, m metric.Meter) {
-				_, err := m.Int64ObservableGauge("agauge")
-				assert.Error(t, err)
+				cback := func(_ context.Context, o instrument.Int64Observer) error {
+					o.Observe(4)
+					return nil
+				}
+				gauge, err := m.Int64ObservableGauge("agauge", instrument.WithInt64Callback(cback))
+				assert.NoError(t, err)
+				_, err = m.RegisterCallback(func(_ context.Context, o metric.Observer) error {
+					o.ObserveInt64(gauge, 11)
+					return nil
+				}, gauge)
+				assert.NoError(t, err)
+			},
+			want: []mocks.MockStatSenderMethod{
+				{
+					Method: "Inc",
+					S:      "agauge",
+					I:      11,
+					F:      1.0,
+				},
+				{
+					Method: "Inc",
+					S:      "agauge",
+					I:      4,
+					F:      1.0,
+				},
 			},
 		},
 		{
 			name: "ObservableFloat64Count",
 			fn: func(t *testing.T, m metric.Meter) {
-				_, err := m.Float64ObservableCounter("afloat")
-				assert.Error(t, err)
+				cback := func(_ context.Context, o instrument.Float64Observer) error {
+					o.Observe(4)
+					return nil
+				}
+				ctr, err := m.Float64ObservableCounter("afloat", instrument.WithFloat64Callback(cback))
+				assert.NoError(t, err)
+				_, err = m.RegisterCallback(func(_ context.Context, o metric.Observer) error {
+					o.ObserveFloat64(ctr, 3)
+					return nil
+				}, ctr)
+				assert.NoError(t, err)
+			},
+			want: []mocks.MockStatSenderMethod{
+				{
+					Method: "Inc",
+					S:      "afloat",
+					I:      3,
+					F:      1.0,
+				},
+				{
+					Method: "Inc",
+					S:      "afloat",
+					I:      4,
+					F:      1.0,
+				},
 			},
 		},
 		{
 			name: "ObservableFloat64UpDownCount",
 			fn: func(t *testing.T, m metric.Meter) {
-				_, err := m.Float64ObservableUpDownCounter("afloat")
-				assert.Error(t, err)
+				cback := func(_ context.Context, o instrument.Float64Observer) error {
+					o.Observe(4)
+					return nil
+				}
+				ctr, err := m.Float64ObservableUpDownCounter("afloat", instrument.WithFloat64Callback(cback))
+				assert.NoError(t, err)
+				_, err = m.RegisterCallback(func(_ context.Context, o metric.Observer) error {
+					o.ObserveFloat64(ctr, 11)
+					return nil
+				}, ctr)
+				assert.NoError(t, err)
+			},
+			want: []mocks.MockStatSenderMethod{
+				{
+					Method: "Inc",
+					S:      "afloat",
+					I:      11,
+					F:      1.0,
+				},
+				{
+					Method: "Inc",
+					S:      "afloat",
+					I:      4,
+					F:      1.0,
+				},
 			},
 		},
 		{
 			name: "ObservableFloat64Gauge",
 			fn: func(t *testing.T, m metric.Meter) {
-				_, err := m.Float64ObservableGauge("agauge")
-				assert.Error(t, err)
+				cback := func(_ context.Context, o instrument.Float64Observer) error {
+					o.Observe(4)
+					return nil
+				}
+				gauge, err := m.Float64ObservableGauge("agauge", instrument.WithFloat64Callback(cback))
+				assert.NoError(t, err)
+				_, err = m.RegisterCallback(func(_ context.Context, o metric.Observer) error {
+					o.ObserveFloat64(gauge, 11)
+					return nil
+				}, gauge)
+				assert.NoError(t, err)
+			},
+			want: []mocks.MockStatSenderMethod{
+				{
+					Method: "Inc",
+					S:      "agauge",
+					I:      11,
+					F:      1.0,
+				},
+				{
+					Method: "Inc",
+					S:      "agauge",
+					I:      4,
+					F:      1.0,
+				},
 			},
 		},
-
 		{
 			name: "SyncInt64Count",
 			fn: func(t *testing.T, m metric.Meter) {
@@ -258,6 +395,9 @@ func TestMeterCreatesInstruments(t *testing.T) {
 			m := mp.Meter("testInstruments")
 
 			tt.fn(t, m)
+
+			err = m.(*meterImpl).produce(ctx)
+			require.NoError(t, err)
 
 			err = mp.Stop(ctx)
 			require.NoError(t, err)
