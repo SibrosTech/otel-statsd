@@ -200,10 +200,6 @@ func (m *meterImpl) RegisterCallback(f metric.Callback, instruments ...instrumen
 	return m.pipes.registerMultiCallback(cback), nil
 }
 
-func (m *meterImpl) produce(ctx context.Context) error {
-	return m.pipes.produce(ctx)
-}
-
 type observer struct {
 	float64 map[observablID[float64]]struct{}
 	int64   map[observablID[int64]]struct{}

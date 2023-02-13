@@ -89,3 +89,7 @@ func (c *MeterProvider) Stop(_ context.Context) error {
 	}
 	return nil
 }
+
+func (c *MeterProvider) produce(ctx context.Context) error {
+	return c.pipes.produce(ctx)
+}

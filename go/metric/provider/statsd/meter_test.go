@@ -2,12 +2,19 @@ package statsd
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/SibrosTech/otel-statsd/go/metric/provider/statsd/mocks"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/testr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/sdk/resource"
 
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/instrument"
@@ -87,6 +94,54 @@ func TestMeterCallbackCreationConcurrency(t *testing.T) {
 	}()
 	go func() {
 		_, _ = m.RegisterCallback(emptyCallback)
+		wg.Done()
+	}()
+	wg.Wait()
+}
+
+func TestNoopCallbackUnregisterConcurrency(t *testing.T) {
+	m := NewMeterProvider().Meter("noop-unregister-concurrency")
+	reg, err := m.RegisterCallback(emptyCallback)
+	require.NoError(t, err)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		_ = reg.Unregister()
+		wg.Done()
+	}()
+	go func() {
+		_ = reg.Unregister()
+		wg.Done()
+	}()
+	wg.Wait()
+}
+
+func TestCallbackUnregisterConcurrency(t *testing.T) {
+	meter := NewMeterProvider().Meter("unregister-concurrency")
+
+	actr, err := meter.Float64ObservableCounter("counter")
+	require.NoError(t, err)
+
+	ag, err := meter.Int64ObservableGauge("gauge")
+	require.NoError(t, err)
+
+	regCtr, err := meter.RegisterCallback(emptyCallback, actr)
+	require.NoError(t, err)
+
+	regG, err := meter.RegisterCallback(emptyCallback, ag)
+	require.NoError(t, err)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		_ = regCtr.Unregister()
+		_ = regG.Unregister()
+		wg.Done()
+	}()
+	go func() {
+		_ = regCtr.Unregister()
+		_ = regG.Unregister()
 		wg.Done()
 	}()
 	wg.Wait()
@@ -396,7 +451,7 @@ func TestMeterCreatesInstruments(t *testing.T) {
 
 			tt.fn(t, m)
 
-			err = m.(*meterImpl).produce(ctx)
+			err = mp.produce(ctx)
 			require.NoError(t, err)
 
 			err = mp.Stop(ctx)
@@ -405,6 +460,354 @@ func TestMeterCreatesInstruments(t *testing.T) {
 			rs.CHECK(t)
 		})
 	}
+}
+
+func TestRegisterNonSDKObserverErrors(t *testing.T) {
+	meter := NewMeterProvider().Meter("scope")
+
+	type obsrv struct{ instrument.Asynchronous }
+	o := obsrv{}
+
+	_, err := meter.RegisterCallback(
+		func(context.Context, metric.Observer) error { return nil },
+		o,
+	)
+	assert.ErrorContains(
+		t,
+		err,
+		"invalid observable: from different implementation",
+		"External instrument registred",
+	)
+}
+
+func TestMeterMixingOnRegisterErrors(t *testing.T) {
+	mp := NewMeterProvider()
+
+	m1 := mp.Meter("scope1")
+	m2 := mp.Meter("scope2")
+	iCtr, err := m2.Int64ObservableCounter("int64 ctr")
+	require.NoError(t, err)
+	fCtr, err := m2.Float64ObservableCounter("float64 ctr")
+	require.NoError(t, err)
+	_, err = m1.RegisterCallback(
+		func(context.Context, metric.Observer) error { return nil },
+		iCtr, fCtr,
+	)
+	assert.ErrorContains(
+		t,
+		err,
+		`invalid registration: observable "int64 ctr" from Meter "scope2", registered with Meter "scope1"`,
+		"Instrument registred with non-creation Meter",
+	)
+	assert.ErrorContains(
+		t,
+		err,
+		`invalid registration: observable "float64 ctr" from Meter "scope2", registered with Meter "scope1"`,
+		"Instrument registred with non-creation Meter",
+	)
+}
+
+func TestCallbackObserverNonRegistered(t *testing.T) {
+	mp := NewMeterProvider()
+
+	m1 := mp.Meter("scope1")
+	valid, err := m1.Int64ObservableCounter("ctr")
+	require.NoError(t, err)
+
+	m2 := mp.Meter("scope2")
+	iCtr, err := m2.Int64ObservableCounter("int64 ctr")
+	require.NoError(t, err)
+	fCtr, err := m2.Float64ObservableCounter("float64 ctr")
+	require.NoError(t, err)
+
+	type int64Obsrv struct{ instrument.Int64Observable }
+	int64Foreign := int64Obsrv{}
+	type float64Obsrv struct{ instrument.Float64Observable }
+	float64Foreign := float64Obsrv{}
+
+	_, err = m1.RegisterCallback(
+		func(_ context.Context, o metric.Observer) error {
+			o.ObserveInt64(valid, 1)
+			o.ObserveInt64(iCtr, 1)
+			o.ObserveFloat64(fCtr, 1)
+			o.ObserveInt64(int64Foreign, 1)
+			o.ObserveFloat64(float64Foreign, 1)
+			return nil
+		},
+		valid,
+	)
+	require.NoError(t, err)
+
+	assert.NotPanics(t, func() {
+		err = mp.produce(context.Background())
+	})
+	assert.NoError(t, err)
+
+	// var got metricdata.ResourceMetrics
+	// assert.NotPanics(t, func() {
+	// 	got, err = rdr.Collect(context.Background())
+	// })
+	//
+	// assert.NoError(t, err)
+	// want := metricdata.ResourceMetrics{
+	// 	Resource: resource.Default(),
+	// 	ScopeMetrics: []metricdata.ScopeMetrics{
+	// 		{
+	// 			Scope: instrumentation.Scope{
+	// 				Name: "scope1",
+	// 			},
+	// 			Metrics: []metricdata.Metrics{
+	// 				{
+	// 					Name: "ctr",
+	// 					Data: metricdata.Sum[int64]{
+	// 						Temporality: metricdata.CumulativeTemporality,
+	// 						IsMonotonic: true,
+	// 						DataPoints: []metricdata.DataPoint[int64]{
+	// 							{
+	// 								Value: 1,
+	// 							},
+	// 						},
+	// 					},
+	// 				},
+	// 			},
+	// 		},
+	// 	},
+	// }
+	// metricdatatest.AssertEqual(t, want, got, metricdatatest.IgnoreTimestamp())
+}
+
+type logSink struct {
+	logr.LogSink
+
+	messages []string
+}
+
+func newLogSink(t *testing.T) *logSink {
+	return &logSink{LogSink: testr.New(t).GetSink()}
+}
+
+func (l *logSink) Info(level int, msg string, keysAndValues ...interface{}) {
+	l.messages = append(l.messages, msg)
+	l.LogSink.Info(level, msg, keysAndValues...)
+}
+
+func (l *logSink) Error(err error, msg string, keysAndValues ...interface{}) {
+	l.messages = append(l.messages, fmt.Sprintf("%s: %s", err, msg))
+	l.LogSink.Error(err, msg, keysAndValues...)
+}
+
+func (l *logSink) String() string {
+	out := make([]string, len(l.messages))
+	for i := range l.messages {
+		out[i] = "\t-" + l.messages[i]
+	}
+	return strings.Join(out, "\n")
+}
+
+func TestGlobalInstRegisterCallback(t *testing.T) {
+	l := newLogSink(t)
+	otel.SetLogger(logr.New(l))
+
+	const mtrName = "TestGlobalInstRegisterCallback"
+	preMtr := global.Meter(mtrName)
+	preInt64Ctr, err := preMtr.Int64ObservableCounter("pre.int64.counter")
+	require.NoError(t, err)
+	preFloat64Ctr, err := preMtr.Float64ObservableCounter("pre.float64.counter")
+	require.NoError(t, err)
+
+	mp := NewMeterProvider(WithResource(resource.Empty()))
+	global.SetMeterProvider(mp)
+
+	postMtr := global.Meter(mtrName)
+	postInt64Ctr, err := postMtr.Int64ObservableCounter("post.int64.counter")
+	require.NoError(t, err)
+	postFloat64Ctr, err := postMtr.Float64ObservableCounter("post.float64.counter")
+	require.NoError(t, err)
+
+	cb := func(_ context.Context, o metric.Observer) error {
+		o.ObserveInt64(preInt64Ctr, 1)
+		o.ObserveFloat64(preFloat64Ctr, 2)
+		o.ObserveInt64(postInt64Ctr, 3)
+		o.ObserveFloat64(postFloat64Ctr, 4)
+		return nil
+	}
+
+	_, err = preMtr.RegisterCallback(cb, preInt64Ctr, preFloat64Ctr, postInt64Ctr, postFloat64Ctr)
+	assert.NoError(t, err)
+
+	_, err = preMtr.RegisterCallback(cb, preInt64Ctr, preFloat64Ctr, postInt64Ctr, postFloat64Ctr)
+	assert.NoError(t, err)
+
+	err = mp.produce(context.Background())
+	assert.NoError(t, err)
+
+	// got, err := rdr.Collect(context.Background())
+	// assert.NoError(t, err)
+	// assert.Lenf(t, l.messages, 0, "Warnings and errors logged:\n%s", l)
+	// metricdatatest.AssertEqual(t, metricdata.ResourceMetrics{
+	// 	ScopeMetrics: []metricdata.ScopeMetrics{
+	// 		{
+	// 			Scope: instrumentation.Scope{Name: "TestGlobalInstRegisterCallback"},
+	// 			Metrics: []metricdata.Metrics{
+	// 				{
+	// 					Name: "pre.int64.counter",
+	// 					Data: metricdata.Sum[int64]{
+	// 						Temporality: metricdata.CumulativeTemporality,
+	// 						IsMonotonic: true,
+	// 						DataPoints:  []metricdata.DataPoint[int64]{{Value: 1}},
+	// 					},
+	// 				},
+	// 				{
+	// 					Name: "pre.float64.counter",
+	// 					Data: metricdata.Sum[float64]{
+	// 						DataPoints:  []metricdata.DataPoint[float64]{{Value: 2}},
+	// 						Temporality: metricdata.CumulativeTemporality,
+	// 						IsMonotonic: true,
+	// 					},
+	// 				},
+	// 				{
+	// 					Name: "post.int64.counter",
+	// 					Data: metricdata.Sum[int64]{
+	// 						Temporality: metricdata.CumulativeTemporality,
+	// 						IsMonotonic: true,
+	// 						DataPoints:  []metricdata.DataPoint[int64]{{Value: 3}},
+	// 					},
+	// 				},
+	// 				{
+	// 					Name: "post.float64.counter",
+	// 					Data: metricdata.Sum[float64]{
+	// 						DataPoints:  []metricdata.DataPoint[float64]{{Value: 4}},
+	// 						Temporality: metricdata.CumulativeTemporality,
+	// 						IsMonotonic: true,
+	// 					},
+	// 				},
+	// 			},
+	// 		},
+	// 	},
+	// }, got, metricdatatest.IgnoreTimestamp())
+}
+
+func TestMetersProvideScope(t *testing.T) {
+	mp := NewMeterProvider()
+
+	m1 := mp.Meter("scope1")
+	ctr1, err := m1.Float64ObservableCounter("ctr1")
+	assert.NoError(t, err)
+	_, err = m1.RegisterCallback(func(_ context.Context, o metric.Observer) error {
+		o.ObserveFloat64(ctr1, 5)
+		return nil
+	}, ctr1)
+	assert.NoError(t, err)
+
+	m2 := mp.Meter("scope2")
+	ctr2, err := m2.Int64ObservableCounter("ctr2")
+	assert.NoError(t, err)
+	_, err = m2.RegisterCallback(func(_ context.Context, o metric.Observer) error {
+		o.ObserveInt64(ctr2, 7)
+		return nil
+	}, ctr2)
+	assert.NoError(t, err)
+
+	err = mp.produce(context.Background())
+	assert.NoError(t, err)
+
+	// want := metricdata.ResourceMetrics{
+	// 	Resource: resource.Default(),
+	// 	ScopeMetrics: []metricdata.ScopeMetrics{
+	// 		{
+	// 			Scope: instrumentation.Scope{
+	// 				Name: "scope1",
+	// 			},
+	// 			Metrics: []metricdata.Metrics{
+	// 				{
+	// 					Name: "ctr1",
+	// 					Data: metricdata.Sum[float64]{
+	// 						Temporality: metricdata.CumulativeTemporality,
+	// 						IsMonotonic: true,
+	// 						DataPoints: []metricdata.DataPoint[float64]{
+	// 							{
+	// 								Value: 5,
+	// 							},
+	// 						},
+	// 					},
+	// 				},
+	// 			},
+	// 		},
+	// 		{
+	// 			Scope: instrumentation.Scope{
+	// 				Name: "scope2",
+	// 			},
+	// 			Metrics: []metricdata.Metrics{
+	// 				{
+	// 					Name: "ctr2",
+	// 					Data: metricdata.Sum[int64]{
+	// 						Temporality: metricdata.CumulativeTemporality,
+	// 						IsMonotonic: true,
+	// 						DataPoints: []metricdata.DataPoint[int64]{
+	// 							{
+	// 								Value: 7,
+	// 							},
+	// 						},
+	// 					},
+	// 				},
+	// 			},
+	// 		},
+	// 	},
+	// }
+	//
+	// got, err := rdr.Collect(context.Background())
+	// assert.NoError(t, err)
+	// metricdatatest.AssertEqual(t, want, got, metricdatatest.IgnoreTimestamp())
+}
+
+func TestUnregisterUnregisters(t *testing.T) {
+	mp := NewMeterProvider()
+	m := mp.Meter("TestUnregisterUnregisters")
+
+	int64Counter, err := m.Int64ObservableCounter("int64.counter")
+	require.NoError(t, err)
+
+	int64UpDownCounter, err := m.Int64ObservableUpDownCounter("int64.up_down_counter")
+	require.NoError(t, err)
+
+	int64Gauge, err := m.Int64ObservableGauge("int64.gauge")
+	require.NoError(t, err)
+
+	floag64Counter, err := m.Float64ObservableCounter("floag64.counter")
+	require.NoError(t, err)
+
+	floag64UpDownCounter, err := m.Float64ObservableUpDownCounter("floag64.up_down_counter")
+	require.NoError(t, err)
+
+	floag64Gauge, err := m.Float64ObservableGauge("floag64.gauge")
+	require.NoError(t, err)
+
+	var called bool
+	reg, err := m.RegisterCallback(
+		func(context.Context, metric.Observer) error {
+			called = true
+			return nil
+		},
+		int64Counter,
+		int64UpDownCounter,
+		int64Gauge,
+		floag64Counter,
+		floag64UpDownCounter,
+		floag64Gauge,
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	err = mp.produce(ctx)
+	require.NoError(t, err)
+	assert.True(t, called, "callback not called for registered callback")
+
+	called = false
+	require.NoError(t, reg.Unregister(), "unregister")
+
+	err = mp.produce(ctx)
+	require.NoError(t, err)
+	assert.False(t, called, "callback called for unregistered callback")
 }
 
 var (
