@@ -1,6 +1,8 @@
 package statsd
 
 import (
+	"time"
+
 	"github.com/cactus/go-statsd-client/v5/statsd"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -20,6 +22,9 @@ type config struct {
 
 	// Size of the worker chan buffer. Default is workers * 10
 	WorkerChanBufferSize int
+
+	// Intervening time to call observables
+	Interval time.Duration
 }
 
 // Option is the interface that applies the value to a configuration option.
@@ -71,12 +76,24 @@ func (o workersOption) apply(cfg config) config {
 
 // WithWorkerChanBufferSize sets the size of the worker chan buffer. Default is workers * 10
 func WithWorkerChanBufferSize(workers int) Option {
-	return workersOption{workers}
+	return workerChanBufferSizeOption{workers}
 }
 
 type workerChanBufferSizeOption struct{ size int }
 
 func (o workerChanBufferSizeOption) apply(cfg config) config {
 	cfg.WorkerChanBufferSize = o.size
+	return cfg
+}
+
+// WithInterval sets the intervening time to call observables
+func WithInterval(d time.Duration) Option {
+	return intervalOption{d}
+}
+
+type intervalOption struct{ interval time.Duration }
+
+func (o intervalOption) apply(cfg config) config {
+	cfg.Interval = o.interval
 	return cfg
 }
