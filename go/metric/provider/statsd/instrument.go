@@ -7,7 +7,6 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
@@ -39,7 +38,7 @@ type observablID[N int64 | float64] struct {
 	name        string
 	description string
 	kind        sdkmetric.InstrumentKind
-	unit        unit.Unit
+	unit        string
 	scope       instrumentation.Scope
 }
 
@@ -52,7 +51,7 @@ var _ instrument.Float64ObservableCounter = float64Observable{}
 var _ instrument.Float64ObservableUpDownCounter = float64Observable{}
 var _ instrument.Float64ObservableGauge = float64Observable{}
 
-func newFloat64Observable(provider *MeterProvider, scope instrumentation.Scope, kind sdkmetric.InstrumentKind, name, desc string, u unit.Unit) float64Observable {
+func newFloat64Observable(provider *MeterProvider, scope instrumentation.Scope, kind sdkmetric.InstrumentKind, name, desc string, u string) float64Observable {
 	return float64Observable{
 		observable: newObservable[float64](provider, scope, kind, name, desc, u),
 	}
@@ -67,7 +66,7 @@ var _ instrument.Int64ObservableCounter = int64Observable{}
 var _ instrument.Int64ObservableUpDownCounter = int64Observable{}
 var _ instrument.Int64ObservableGauge = int64Observable{}
 
-func newInt64Observable(provider *MeterProvider, scope instrumentation.Scope, kind sdkmetric.InstrumentKind, name, desc string, u unit.Unit) int64Observable {
+func newInt64Observable(provider *MeterProvider, scope instrumentation.Scope, kind sdkmetric.InstrumentKind, name, desc string, u string) int64Observable {
 	return int64Observable{
 		observable: newObservable[int64](provider, scope, kind, name, desc, u),
 	}
@@ -80,7 +79,7 @@ type observable[N int64 | float64] struct {
 	provider *MeterProvider
 }
 
-func newObservable[N int64 | float64](provider *MeterProvider, scope instrumentation.Scope, kind sdkmetric.InstrumentKind, name, desc string, u unit.Unit) *observable[N] {
+func newObservable[N int64 | float64](provider *MeterProvider, scope instrumentation.Scope, kind sdkmetric.InstrumentKind, name, desc string, u string) *observable[N] {
 	return &observable[N]{
 		observablID: observablID[N]{
 			name:        name,

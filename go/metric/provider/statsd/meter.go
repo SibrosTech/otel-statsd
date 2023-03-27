@@ -9,7 +9,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
@@ -317,7 +316,7 @@ func newInstProvider[N int64 | float64](p *MeterProvider, pipes *pipeline, s ins
 }
 
 // lookup returns the resolved instrumentImpl.
-func (p *instProvider[N]) lookup(kind sdkmetric.InstrumentKind, name, desc string, u unit.Unit) (*instrumentImpl[N], error) {
+func (p *instProvider[N]) lookup(kind sdkmetric.InstrumentKind, name, desc string, u string) (*instrumentImpl[N], error) {
 	i := sdkmetric.Instrument{
 		Name:        name,
 		Description: "", // TODO
@@ -330,7 +329,7 @@ func (p *instProvider[N]) lookup(kind sdkmetric.InstrumentKind, name, desc strin
 
 type int64ObservProvider struct{ *instProvider[int64] }
 
-func (p int64ObservProvider) lookup(kind sdkmetric.InstrumentKind, name, desc string, u unit.Unit) (int64Observable, error) {
+func (p int64ObservProvider) lookup(kind sdkmetric.InstrumentKind, name, desc string, u string) (int64Observable, error) {
 	return newInt64Observable(p.provider, p.scope, kind, name, desc, u), nil
 }
 
@@ -360,7 +359,7 @@ func (o int64Observer) Observe(val int64, attrs ...attribute.KeyValue) {
 
 type float64ObservProvider struct{ *instProvider[float64] }
 
-func (p float64ObservProvider) lookup(kind sdkmetric.InstrumentKind, name, desc string, u unit.Unit) (float64Observable, error) {
+func (p float64ObservProvider) lookup(kind sdkmetric.InstrumentKind, name, desc string, u string) (float64Observable, error) {
 	return newFloat64Observable(p.provider, p.scope, kind, name, desc, u), nil
 }
 
