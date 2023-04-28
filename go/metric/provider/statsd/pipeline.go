@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -91,13 +92,17 @@ func (p *pipeline) produce(ctx context.Context) error {
 func (p *pipeline) registerMultiCallback(c multiCallback) metric.Registration {
 	unregs := make([]func(), 1)
 	unregs[0] = p.addMultiCallback(c)
-	return unregisterFuncs(unregs)
+	return unregisterFuncs{unregs: unregs}
 }
 
-type unregisterFuncs []func()
+type unregisterFuncs struct {
+	embedded.Registration
+
+	unregs []func()
+}
 
 func (u unregisterFuncs) Unregister() error {
-	for _, f := range u {
+	for _, f := range u.unregs {
 		f()
 	}
 	return nil

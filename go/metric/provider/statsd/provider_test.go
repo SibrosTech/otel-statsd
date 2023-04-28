@@ -9,7 +9,7 @@ import (
 	"github.com/cactus/go-statsd-client/v5/statsd"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric"
 )
 
 func TestProvider(t *testing.T) {
@@ -50,7 +50,7 @@ func TestProvider(t *testing.T) {
 		for _, tag := range test.Tags {
 			attr = append(attr, attribute.String(tag[0], tag[1]))
 		}
-		counter.Add(ctx, test.I, attr...)
+		counter.Add(ctx, test.I, metric.WithAttributes(attr...))
 	}
 
 	rs.CHECK(t)
@@ -93,7 +93,7 @@ func TestProviderWithWorkers(t *testing.T) {
 		for _, tag := range test.Tags {
 			attr = append(attr, attribute.String(tag[0], tag[1]))
 		}
-		counter.Add(ctx, test.I, attr...)
+		counter.Add(ctx, test.I, metric.WithAttributes(attr...))
 	}
 
 	err = cont.Stop(ctx)
@@ -137,12 +137,12 @@ func TestProviderRun(t *testing.T) {
 
 	m := mp.Meter("testInstruments")
 
-	cback := func(_ context.Context, o instrument.Int64Observer) error {
+	cback := func(_ context.Context, o metric.Int64Observer) error {
 		o.Observe(4)
 		return nil
 	}
 
-	_, err := m.Int64ObservableCounter("aint", instrument.WithInt64Callback(cback))
+	_, err := m.Int64ObservableCounter("aint", metric.WithInt64Callback(cback))
 	require.NoError(t, err)
 
 	err = mp.Start(ctx)
