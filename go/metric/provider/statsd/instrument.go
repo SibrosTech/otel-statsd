@@ -5,32 +5,56 @@ import (
 	"errors"
 	"fmt"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 )
 
-type instrumentImpl[N int64 | float64] struct {
-	instrument.Synchronous
+type int64Inst struct {
+	embedded.Int64Counter
+	embedded.Int64UpDownCounter
+	embedded.Int64Histogram
 
 	provider   *MeterProvider
 	instrument sdkmetric.Instrument
 }
 
-var _ instrument.Float64Counter = (*instrumentImpl[float64])(nil)
-var _ instrument.Float64UpDownCounter = (*instrumentImpl[float64])(nil)
-var _ instrument.Float64Histogram = (*instrumentImpl[float64])(nil)
-var _ instrument.Int64Counter = (*instrumentImpl[int64])(nil)
-var _ instrument.Int64UpDownCounter = (*instrumentImpl[int64])(nil)
-var _ instrument.Int64Histogram = (*instrumentImpl[int64])(nil)
+var _ metric.Int64Counter = (*int64Inst)(nil)
+var _ metric.Int64UpDownCounter = (*int64Inst)(nil)
+var _ metric.Int64Histogram = (*int64Inst)(nil)
 
-func (i *instrumentImpl[N]) Add(ctx context.Context, val N, attrs ...attribute.KeyValue) {
-	_ = i.provider.statsdClient.Inc(i.instrument.Name, int64(val), 1.0, collectTags(i.provider, attrs)...)
+func (i *int64Inst) Add(ctx context.Context, val int64, opts ...metric.AddOption) {
+	c := metric.NewAddConfig(opts)
+	_ = i.provider.statsdClient.Inc(i.instrument.Name, val, 1.0, collectTags(i.provider, c.Attributes())...)
 }
 
-func (i *instrumentImpl[N]) Record(ctx context.Context, val N, attrs ...attribute.KeyValue) {
-	_ = i.provider.statsdClient.Timing(i.instrument.Name, int64(val), 1.0, collectTags(i.provider, attrs)...)
+func (i *int64Inst) Record(ctx context.Context, val int64, opts ...metric.RecordOption) {
+	c := metric.NewRecordConfig(opts)
+	_ = i.provider.statsdClient.Timing(i.instrument.Name, int64(val), 1.0, collectTags(i.provider, c.Attributes())...)
+}
+
+type float64Inst struct {
+	embedded.Float64Counter
+	embedded.Float64UpDownCounter
+	embedded.Float64Histogram
+
+	provider   *MeterProvider
+	instrument sdkmetric.Instrument
+}
+
+var _ metric.Float64Counter = (*float64Inst)(nil)
+var _ metric.Float64UpDownCounter = (*float64Inst)(nil)
+var _ metric.Float64Histogram = (*float64Inst)(nil)
+
+func (i *float64Inst) Add(ctx context.Context, val float64, opts ...metric.AddOption) {
+	c := metric.NewAddConfig(opts)
+	_ = i.provider.statsdClient.Inc(i.instrument.Name, int64(val), 1.0, collectTags(i.provider, c.Attributes())...)
+}
+
+func (i *float64Inst) Record(ctx context.Context, val float64, opts ...metric.RecordOption) {
+	c := metric.NewRecordConfig(opts)
+	_ = i.provider.statsdClient.Timing(i.instrument.Name, int64(val), 1.0, collectTags(i.provider, c.Attributes())...)
 }
 
 // observablID is a comparable unique identifier of an observable.
@@ -43,13 +67,17 @@ type observablID[N int64 | float64] struct {
 }
 
 type float64Observable struct {
-	instrument.Float64Observable
+	metric.Float64Observable
+	embedded.Float64ObservableCounter
+	embedded.Float64ObservableUpDownCounter
+	embedded.Float64ObservableGauge
+
 	*observable[float64]
 }
 
-var _ instrument.Float64ObservableCounter = float64Observable{}
-var _ instrument.Float64ObservableUpDownCounter = float64Observable{}
-var _ instrument.Float64ObservableGauge = float64Observable{}
+var _ metric.Float64ObservableCounter = float64Observable{}
+var _ metric.Float64ObservableUpDownCounter = float64Observable{}
+var _ metric.Float64ObservableGauge = float64Observable{}
 
 func newFloat64Observable(provider *MeterProvider, scope instrumentation.Scope, kind sdkmetric.InstrumentKind, name, desc string, u string) float64Observable {
 	return float64Observable{
@@ -58,13 +86,17 @@ func newFloat64Observable(provider *MeterProvider, scope instrumentation.Scope, 
 }
 
 type int64Observable struct {
-	instrument.Int64Observable
+	metric.Int64Observable
+	embedded.Int64ObservableCounter
+	embedded.Int64ObservableUpDownCounter
+	embedded.Int64ObservableGauge
+
 	*observable[int64]
 }
 
-var _ instrument.Int64ObservableCounter = int64Observable{}
-var _ instrument.Int64ObservableUpDownCounter = int64Observable{}
-var _ instrument.Int64ObservableGauge = int64Observable{}
+var _ metric.Int64ObservableCounter = int64Observable{}
+var _ metric.Int64ObservableUpDownCounter = int64Observable{}
+var _ metric.Int64ObservableGauge = int64Observable{}
 
 func newInt64Observable(provider *MeterProvider, scope instrumentation.Scope, kind sdkmetric.InstrumentKind, name, desc string, u string) int64Observable {
 	return int64Observable{
@@ -73,7 +105,7 @@ func newInt64Observable(provider *MeterProvider, scope instrumentation.Scope, ki
 }
 
 type observable[N int64 | float64] struct {
-	instrument.Asynchronous
+	metric.Observable
 	observablID[N]
 
 	provider *MeterProvider
@@ -93,8 +125,9 @@ func newObservable[N int64 | float64](provider *MeterProvider, scope instrumenta
 }
 
 // observe records the val for the set of attrs.
-func (o *observable[N]) observe(val N, attrs []attribute.KeyValue) {
-	_ = o.provider.statsdClient.Inc(o.name, int64(val), 1.0, collectTags(o.provider, attrs)...)
+func (o *observable[N]) observe(val N, opts ...metric.ObserveOption) {
+	c := metric.NewObserveConfig(opts)
+	_ = o.provider.statsdClient.Inc(o.name, int64(val), 1.0, collectTags(o.provider, c.Attributes())...)
 }
 
 var errEmptyAgg = errors.New("no aggregators for observable instrument")

@@ -8,6 +8,7 @@ import (
 	"github.com/cactus/go-statsd-client/v5/statsd"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
@@ -18,6 +19,8 @@ const (
 )
 
 type MeterProvider struct {
+	embedded.MeterProvider
+
 	scopes sync.Map
 	pipes  *pipeline
 
