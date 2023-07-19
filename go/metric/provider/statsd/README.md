@@ -31,7 +31,7 @@ func main() {
         otel_statsd.WithResource(r),
     )
     
-    global.SetMeterProvider(pusher)
+    otel.SetMeterProvider(pusher)
     if err := pusher.Start(ctx); err != nil {
         panic(err)
     }
