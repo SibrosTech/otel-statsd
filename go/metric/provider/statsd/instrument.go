@@ -14,6 +14,7 @@ import (
 type int64Inst struct {
 	embedded.Int64Counter
 	embedded.Int64UpDownCounter
+	embedded.Int64Gauge
 	embedded.Int64Histogram
 
 	provider   *MeterProvider
@@ -22,6 +23,7 @@ type int64Inst struct {
 
 var _ metric.Int64Counter = (*int64Inst)(nil)
 var _ metric.Int64UpDownCounter = (*int64Inst)(nil)
+var _ metric.Int64Gauge = (*int64Inst)(nil)
 var _ metric.Int64Histogram = (*int64Inst)(nil)
 
 func (i *int64Inst) Add(ctx context.Context, val int64, opts ...metric.AddOption) {
@@ -37,6 +39,7 @@ func (i *int64Inst) Record(ctx context.Context, val int64, opts ...metric.Record
 type float64Inst struct {
 	embedded.Float64Counter
 	embedded.Float64UpDownCounter
+	embedded.Float64Gauge
 	embedded.Float64Histogram
 
 	provider   *MeterProvider
@@ -45,6 +48,7 @@ type float64Inst struct {
 
 var _ metric.Float64Counter = (*float64Inst)(nil)
 var _ metric.Float64UpDownCounter = (*float64Inst)(nil)
+var _ metric.Float64Gauge = (*float64Inst)(nil)
 var _ metric.Float64Histogram = (*float64Inst)(nil)
 
 func (i *float64Inst) Add(ctx context.Context, val float64, opts ...metric.AddOption) {

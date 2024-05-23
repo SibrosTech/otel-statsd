@@ -47,6 +47,12 @@ func (m *meterImpl) Int64UpDownCounter(name string, options ...metric.Int64UpDow
 	return m.int64IP.lookup(kind, name, cfg.Description(), cfg.Unit())
 }
 
+func (m *meterImpl) Int64Gauge(name string, options ...metric.Int64GaugeOption) (metric.Int64Gauge, error) {
+	cfg := metric.NewInt64GaugeConfig(options...)
+	const kind = sdkmetric.InstrumentKindGauge
+	return m.int64IP.lookup(kind, name, cfg.Description(), cfg.Unit())
+}
+
 func (m *meterImpl) Int64Histogram(name string, options ...metric.Int64HistogramOption) (metric.Int64Histogram, error) {
 	cfg := metric.NewInt64HistogramConfig(options...)
 	const kind = sdkmetric.InstrumentKindHistogram
@@ -101,6 +107,11 @@ func (m *meterImpl) Float64UpDownCounter(name string, options ...metric.Float64U
 	cfg := metric.NewFloat64UpDownCounterConfig(options...)
 	const kind = sdkmetric.InstrumentKindUpDownCounter
 	return m.float64IP.lookup(kind, name, cfg.Description(), cfg.Unit())
+}
+
+func (m *meterImpl) Float64Gauge(name string, options ...metric.Float64GaugeOption) (metric.Float64Gauge, error) {
+	// TODO implement me
+	panic("implement me")
 }
 
 func (m *meterImpl) Float64Histogram(name string, options ...metric.Float64HistogramOption) (metric.Float64Histogram, error) {
