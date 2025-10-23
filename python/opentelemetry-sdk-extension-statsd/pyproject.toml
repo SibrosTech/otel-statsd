@@ -1,28 +1,43 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "sb-opentelemetry-sdk-extension-statsd"
-version = "0.8.0"
+version = "0.8.2"
 authors = [
     { name="Rangel Reale", email="rangelreale@gmail.com" },
+    {name = "Rangel Reale", email = "rangelspam@gmail.com"},
 ]
-description = "StatsD client support for OpenTelemetry"
+description = "StatsD extension for OpenTelemetry"
 readme = "README.rst"
-license = { file="LICENSE" }
-requires-python = ">=3.6"
+license = { file="LICENSE", text = "Apache-2.0"}
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+]
+dependencies = [
+    "setuptools>=80.9.0",
+    "opentelemetry-sdk ~= 1.38",
+    "statsd-python ~= 0.6",
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/SibrosTech/otel-statsd"
+"Homepage" = "https://github.com/SibrosTech/otel-statsd/tree/master/python/opentelemetry-sdk-extension-statsd"
 "Bug Tracker" = "https://github.com/SibrosTech/otel-statsd/issues"
+
+[project.optional-dependencies]
+test = []
 
 [dependency-groups]
 dev = [
     "pytest>=7.0.1",
 ]
+
+[build-system]
+requires = ["uv_build>=0.9.0"]
+build-backend = "uv_build"

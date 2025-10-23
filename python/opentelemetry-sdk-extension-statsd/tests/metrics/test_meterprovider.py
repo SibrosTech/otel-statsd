@@ -14,7 +14,7 @@
 
 from unittest import TestCase, mock
 
-from opentelemetry.sdk.extension.statsd.metrics import StatsdMeterProvider
+from sb_opentelemetry_sdk_extension_statsd import StatsdMeterProvider
 from opentelemetry.sdk.resources import Resource
 
 
