@@ -1,6 +1,8 @@
 from typing import Optional, Union, Sequence, Dict
 from logging import getLogger
 from threading import Lock
+
+from opentelemetry.context import Context
 from statsd import StatsdClient
 
 from opentelemetry.metrics import (
@@ -48,6 +50,7 @@ class StatsdMeterProvider(MeterProvider):
             name: str,
             version: Optional[str] = None,
             schema_url: Optional[str] = None,
+            attributes: Optional[Attributes] = None,
     ) -> Meter:
         """Returns a StatsdMeter."""
         if not name:
@@ -87,16 +90,16 @@ class StatsdMeter(Meter):
             unit: str = "",
             description: str = "",
     ) -> Counter:
-        if self._is_instrument_registered(
-                name, StatsdCounter, unit, description
-        )[0]:
-            _logger.warning(
-                "An instrument with name %s, type %s, unit %s and "
-                "description %s has been created already.",
+        status = self._register_instrument(
+            name, StatsdCounter, unit, description
+        )
+        if status.conflict:
+            self._log_instrument_registration_conflict(
                 name,
-                Counter.__name__,
+                StatsdCounter.__name__,
                 unit,
                 description,
+                status,
             )
         return StatsdCounter(self._statsd, self._resource,
                              name, unit=unit, description=description)
@@ -107,16 +110,16 @@ class StatsdMeter(Meter):
             unit: str = "",
             description: str = "",
     ) -> UpDownCounter:
-        if self._is_instrument_registered(
-                name, StatsdUpDownCounter, unit, description
-        )[0]:
-            _logger.warning(
-                "An instrument with name %s, type %s, unit %s and "
-                "description %s has been created already.",
+        status = self._register_instrument(
+            name, StatsdUpDownCounter, unit, description
+        )
+        if status.conflict:
+            self._log_instrument_registration_conflict(
                 name,
-                UpDownCounter.__name__,
+                StatsdUpDownCounter.__name__,
                 unit,
                 description,
+                status,
             )
         return StatsdUpDownCounter(self._statsd, self._resource,
                                    name, unit=unit, description=description)
@@ -128,16 +131,16 @@ class StatsdMeter(Meter):
             unit: str = "",
             description: str = "",
     ) -> ObservableCounter:
-        if self._is_instrument_registered(
-                name, StatsdObservableCounter, unit, description
-        )[0]:
-            _logger.warning(
-                "An instrument with name %s, type %s, unit %s and "
-                "description %s has been created already.",
+        status = self._register_instrument(
+            name, StatsdObservableCounter, unit, description
+        )
+        if status.conflict:
+            self._log_instrument_registration_conflict(
                 name,
-                ObservableCounter.__name__,
+                StatsdObservableCounter.__name__,
                 unit,
                 description,
+                status,
             )
         return StatsdObservableCounter(
             self._statsd,
@@ -153,17 +156,19 @@ class StatsdMeter(Meter):
             name: str,
             unit: str = "",
             description: str = "",
+            *,
+            explicit_bucket_boundaries_advisory: Optional[Sequence[float]] = None,
     ) -> Histogram:
-        if self._is_instrument_registered(
-                name, StatsdHistogram, unit, description
-        )[0]:
-            _logger.warning(
-                "An instrument with name %s, type %s, unit %s and "
-                "description %s has been created already.",
+        status = self._register_instrument(
+            name, StatsdHistogram, unit, description
+        )
+        if status.conflict:
+            self._log_instrument_registration_conflict(
                 name,
-                Histogram.__name__,
+                StatsdHistogram.__name__,
                 unit,
                 description,
+                status,
             )
         return StatsdHistogram(self._statsd, self._resource,
                                name, unit=unit, description=description)
@@ -175,16 +180,16 @@ class StatsdMeter(Meter):
             unit: str = "",
             description: str = "",
     ) -> ObservableGauge:
-        if self._is_instrument_registered(
-                name, StatsdObservableGauge, unit, description
-        )[0]:
-            _logger.warning(
-                "An instrument with name %s, type %s, unit %s and "
-                "description %s has been created already.",
+        status = self._register_instrument(
+            name, StatsdObservableGauge, unit, description
+        )
+        if status.conflict:
+            self._log_instrument_registration_conflict(
                 name,
-                ObservableGauge.__name__,
+                StatsdObservableGauge.__name__,
                 unit,
                 description,
+                status,
             )
         return StatsdObservableGauge(
             self._statsd, self._resource,
@@ -201,16 +206,16 @@ class StatsdMeter(Meter):
             unit: str = "",
             description: str = "",
     ) -> ObservableUpDownCounter:
-        if self._is_instrument_registered(
-                name, StatsdObservableUpDownCounter, unit, description
-        )[0]:
-            _logger.warning(
-                "An instrument with name %s, type %s, unit %s and "
-                "description %s has been created already.",
+        status = self._register_instrument(
+            name, StatsdObservableUpDownCounter, unit, description
+        )
+        if status.conflict:
+            self._log_instrument_registration_conflict(
                 name,
-                ObservableUpDownCounter.__name__,
+                StatsdObservableUpDownCounter.__name__,
                 unit,
                 description,
+                status,
             )
         return StatsdObservableUpDownCounter(
             self._statsd, self._resource,
@@ -241,6 +246,7 @@ class StatsdCounter(Counter):
             self,
             amount: Union[int, float],
             attributes: Optional[Attributes] = None,
+            context: Optional[Context] = None,
     ) -> None:
         if amount < 0:
             _logger.warning(
@@ -270,6 +276,7 @@ class StatsdUpDownCounter(UpDownCounter):
             self,
             amount: Union[int, float],
             attributes: Optional[Attributes] = None,
+            context: Optional[Context] = None,
     ) -> None:
         self._statsd.increment(self._name, value=amount, tags=resource_to_tags(self._resource, attributes))
 
@@ -330,6 +337,7 @@ class StatsdHistogram(Histogram):
             self,
             amount: Union[int, float],
             attributes: Optional[Attributes] = None,
+            context: Optional[Context] = None,
     ) -> None:
         self._statsd.timing(self._name, value=amount, tags=resource_to_tags(self._resource, attributes))
 

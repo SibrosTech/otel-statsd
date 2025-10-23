@@ -21,3 +21,8 @@ classifiers = [
 [project.urls]
 "Homepage" = "https://github.com/SibrosTech/otel-statsd"
 "Bug Tracker" = "https://github.com/SibrosTech/otel-statsd/issues"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.1",
+]
