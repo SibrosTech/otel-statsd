@@ -1,6 +1,6 @@
 [project]
 name = "sb-opentelemetry-sdk-extension-statsd"
-version = "0.8.2"
+version = "0.8.3"
 authors = [
     { name="Rangel Reale", email="rangelreale@gmail.com" },
     {name = "Rangel Reale", email = "rangelspam@gmail.com"},

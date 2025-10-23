@@ -151,7 +151,7 @@ wheels = [
 
 [[package]]
 name = "sb-opentelemetry-sdk-extension-statsd"
-version = "0.8.2"
+version = "0.8.3"
 source = { editable = "." }
 dependencies = [
     { name = "opentelemetry-sdk" },
