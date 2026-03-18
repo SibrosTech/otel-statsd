@@ -1,3 +1,3 @@
 module github.com/SibrosTech/otel-statsd
 
-go 1.21
+go 1.26

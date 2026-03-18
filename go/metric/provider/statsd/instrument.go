@@ -36,6 +36,10 @@ func (i *int64Inst) Record(ctx context.Context, val int64, opts ...metric.Record
 	_ = i.provider.statsdClient.Timing(i.instrument.Name, int64(val), 1.0, collectTags(i.provider, c.Attributes())...)
 }
 
+func (i *int64Inst) Enabled(context.Context) bool {
+	return true
+}
+
 type float64Inst struct {
 	embedded.Float64Counter
 	embedded.Float64UpDownCounter
@@ -59,6 +63,10 @@ func (i *float64Inst) Add(ctx context.Context, val float64, opts ...metric.AddOp
 func (i *float64Inst) Record(ctx context.Context, val float64, opts ...metric.RecordOption) {
 	c := metric.NewRecordConfig(opts)
 	_ = i.provider.statsdClient.Timing(i.instrument.Name, int64(val), 1.0, collectTags(i.provider, c.Attributes())...)
+}
+
+func (i *float64Inst) Enabled(context.Context) bool {
+	return true
 }
 
 // observablID is a comparable unique identifier of an observable.
